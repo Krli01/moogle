@@ -26,4 +26,3 @@ En primer lugar se debe añadir los documentos (con extensión '.txt') que se de
 Para iniciar el programa, se debe ejecutar en la carpeta raíz del proyecto uno de los siguientes comandos, en dependencia del sistema operativo con que cuente el usuario:
    - Linux: make dev
    - Windows: dotnet watch run --project MoogleServer
-Una vez ejecutado
