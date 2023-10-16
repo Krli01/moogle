@@ -1,4 +1,6 @@
-﻿namespace MoogleEngine;
+﻿using System.Runtime.Intrinsics.Arm;
+
+namespace MoogleEngine;
 
 
 public static class Moogle
@@ -83,12 +85,15 @@ public static class Moogle
         int i=0;
         foreach(int docID in OR_results.Keys)
         {
-             string snippet = GetSnippet(docID, qv_OR, data);
+             string snippet = GetSnippet(docID, qv_OR!, data);
              items[i]=new SearchItem(data.ID_Title[docID], snippet, OR_results[docID]);
             i++;
         }
 
-        return new SearchResult(items, query);
+        //se busca la sugerencia en caso de errores de escritura en la consulta
+        string suggestion = GetSuggestion(qv_OR!, data);
+
+        return new SearchResult(items, suggestion);
     }
 
     // se normaliza el vector dividiendo cada componente entre la norma
@@ -257,7 +262,7 @@ public static class Moogle
             return vector;
         }
 
-        return null;
+        return null!;
     }
 
     // método con el que se crean los vectores de las operaciones "!" y "^"
@@ -322,5 +327,88 @@ public static class Moogle
             }
          }
       }
+    // método para obtener la sugerencia de busqueda
+    private static string GetSuggestion(QueryVector query, DataInfo data)
+    {
+        string querystring = "";
+        string suggestion = "";
 
-} 
+        foreach (var word in query.vector.Keys)
+        {
+            querystring = querystring+word+" ";
+            if (data.Vocabulary.ContainsKey(word))
+            {
+                suggestion = suggestion+word+" ";
+                continue;
+            }
+           
+            int MinimumEditDistance = int.MaxValue;
+            string PossibleSuggestion = "";
+            
+            foreach (var term in data.Vocabulary.Keys)
+            {
+                int EditDistance = GetLevenshteinDistance(word, term);
+                
+                if (EditDistance == 1) 
+                    {
+                    PossibleSuggestion = term;
+                    break;
+                    }
+                if (EditDistance < MinimumEditDistance)
+                    {
+                    MinimumEditDistance = EditDistance;
+                    PossibleSuggestion = term;
+                    }
+            }
+
+            suggestion = suggestion+PossibleSuggestion+" ";
+        }
+
+        querystring = querystring.Trim();
+        suggestion = suggestion.Trim();
+
+        if(querystring!=suggestion)return suggestion;
+        return "";
+        //Desventaja de esta sugerencia: el vocabulario está conformado por cualquier término contenido en el cuerpo de documentos, sea considerado una palabra válida o no.
+        //Esto implica que la sugerencia puede no resultar la más exacta en algunos casos, más allá del funcionamiento del algoritmo.
+    }
+    
+    // método para obtener la distancia mínima de edición
+    private static int GetLevenshteinDistance(string a, string b)
+    {
+        //odiamos la recursión
+        int n = a.Length;
+        int m = b.Length;
+        int[,] d = new int[n + 1, m + 1];
+
+        if (n == 0)
+        {
+            return m;
+        }
+
+        if (m == 0)
+        {
+            return n;
+        }
+
+        for (int i = 0; i <= n; d[i, 0] = i++)
+        {
+        }
+
+        for (int j = 0; j <= m; d[0, j] = j++)
+        {
+        }
+
+        for (int i = 1; i <= n; i++)
+        {
+            for (int j = 1; j <= m; j++)
+            {
+                int cost = (b[j - 1] == a[i - 1]) ? 0 : 1;
+                d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+            }
+        }
+        return d[n, m];
+
+    }
+
+}
